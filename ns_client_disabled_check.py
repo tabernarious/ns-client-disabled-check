@@ -2,7 +2,7 @@
 ## Summary:     Script to find devices with inactive Netskope Clients
 ## Author:      Daniel Tavernier and Jorge Garza, Netskope SEs
 ## Last Update: 2022-01-06
-## Version:     0.2
+## Version:     0.3
 ##################################################
 
 import json
@@ -61,16 +61,28 @@ def get_devices(tenant, token, device_query, limit=5000):
     # Build full request URL
     url = f"https://{tenant}{api_path}?{query_string}"
 
-    # Send request to API and save response
-    response = urllib.request.urlopen(url)
+    try:
+        # Send request to API and save response
+        response = urllib.request.urlopen(url)
 
-    # Decode response for JSON parsing
-    response_json = json.loads(response.read().decode("utf-8"))
+        # Decode response for JSON parsing
+        response_json = json.loads(response.read().decode("utf-8"))
 
-    # Extract list of device hostnames
-    disabled_devices = [devices['attributes']['host_info']['hostname'] for devices in response_json['data']]
+        # Extract list of device hostnames
+        disabled_devices = [devices['attributes']['host_info']['hostname'] for devices in response_json['data']]
+        disabled_devices_response_status = 0 # API responded with data
+    except socket.timeout:
+        print("ERROR: API timeout for " + api_path)
+        disabled_devices = ""
+        disabled_devices_response_status = 2 # API timed out
+        exit()
+    except:
+        print("ERROR: No data from " + api_path + " (confirm correct API token)")
+        disabled_devices = ""
+        disabled_devices_response_status = 1 # Could not parse data (likely no data returned or bad token)
+        exit()
 
-    return disabled_devices
+    return disabled_devices_response_status, disabled_devices
 
 
 def get_events(tenant, token, event_query, event_type="page", timeperiod="86400", limit="1"):
@@ -101,7 +113,7 @@ def get_events(tenant, token, event_query, event_type="page", timeperiod="86400"
         event_data = ""
         event_response_status = 2 # API timed out
     except:
-        #print("ERROR: No data)
+        #print("ERROR: No data from " + api_path)
         event_data = ""
         event_response_status = 1 # Could not parse data (likely no data returned)
 
@@ -112,7 +124,7 @@ def find_devices_with_disabled_clients(tenant, token, timeperiod="86400", device
     print()
     print('Getting list of devices with Netskope Client marked as "disabled"...')
     device_query = "last_event.status eq 0"
-    disabled_devices = get_devices(tenant, token, device_query, device_limit)
+    disabled_devices_response_status, disabled_devices = get_devices(tenant, token, device_query, device_limit)
 
     print(f"Searching for events within the last {timeperiod} seconds that correlate with each device...")
 
@@ -121,7 +133,7 @@ def find_devices_with_disabled_clients(tenant, token, timeperiod="86400", device
     print('"device_hostname","event_domain","event_timestamp","result"')
 
     for device_hostname in disabled_devices:
-        device_type = "unknown"
+        device_type = "unknown" # For the future; trying to pull Device Type from get_devices().
         event_query = "hostname eq " + device_hostname
         event_domain = ""
         event_timestamp = ""
