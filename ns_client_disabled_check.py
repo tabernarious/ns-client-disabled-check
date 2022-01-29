@@ -1,8 +1,8 @@
 ##################################################
 ## Summary:     Script to find devices with inactive Netskope Clients
 ## Author:      Daniel Tavernier and Jorge Garza, Netskope SEs
-## Last Update: 2022-01-06
-## Version:     0.3
+## Last Update: 2022-01-28
+## Version:     0.4
 ##################################################
 
 import datetime
